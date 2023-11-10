@@ -78,9 +78,17 @@ SAM's lightweight mask decoder can be exported to ONNX format so that it can be 
 
 ```
 python scripts/export_onnx_model.py --checkpoint <path/to/checkpoint> --model-type <model_type> --output <path/to/output>
+python scripts/export_onnx_model.py --checkpoint vit_b_lm.pth --model-type vit_b --output vit_b_lm_decoder.onnx
 ```
 
 See the [example notebook](https://github.com/facebookresearch/segment-anything/blob/main/notebooks/onnx_model_example.ipynb) for details on how to combine image preprocessing via SAM's backbone with mask prediction using the ONNX model. It is recommended to use the latest stable version of PyTorch for ONNX export.
+
+To export feature encoder
+
+```
+python scripts/export_image_encoder.py --checkpoint <path/to/checkpoint> --model-type <model_type> --output <path/to/output>
+python scripts/export_image_encoder.py --checkpoint vit_b_lm.pth --model-type vit_b --output vit_b_lm_encoder.onnx --quantize-out vit_b_lm_encoder_quantized.onnx
+```
 
 ### Web demo
 

@@ -14,6 +14,13 @@ import os
 import argparse
 import warnings
 
+import onnx
+import sys
+from onnx import onnx_pb as onnx_proto
+import numpy as np
+from collections import deque
+
+
 try:
     import onnxruntime  # type: ignore
 
@@ -104,16 +111,16 @@ def run_export(
         dummy_input = {
             "input_image": torch.randn((image_size, image_size, 3), dtype=torch.float)
         }
-        dynamic_axes = {
-            "input_image": {0: "image_height", 1: "image_width"},
-        }
+        # dynamic_axes = {
+        #     "input_image": {0: "image_height", 1: "image_width"},
+        # }
     else:
         dummy_input = {
             "input_image": torch.randn(
                 (1, 3, image_size, image_size), dtype=torch.float
             )
         }
-        dynamic_axes = None
+    dynamic_axes = None
 
     _ = onnx_model(**dummy_input)
 
@@ -153,6 +160,9 @@ def run_export(
                     dynamic_axes=dynamic_axes,
                 )
 
+    onnx_model_bf16 = convert_fp32_to_bf16(onnx.load(output))
+    onnx.save(onnx_model_bf16, f"{output}.bf16.onnx")
+
     if onnxruntime_exists:
         ort_inputs = {k: to_numpy(v) for k, v in dummy_input.items()}
         providers = ["CPUExecutionProvider"]
@@ -176,6 +186,72 @@ def run_export(
 
 def to_numpy(tensor):
     return tensor.cpu().numpy()
+
+
+def convert_np_to_bf16(np_data):
+    # mask out the lower 16 fractional bits
+    buffer_data = np_data.tobytes()
+    int_data = np.frombuffer(buffer_data,dtype="uint32")
+    # print(int_data)
+
+    masked_data = np.bitwise_and(int_data, np.uint32(0xffff0000)) 
+    buffer_data = masked_data.tobytes()
+    bf16_data = np.frombuffer(buffer_data, dtype="float32")
+    return bf16_data
+
+def mask_tensor_values(tensor):
+    if tensor.float_data:
+        bf16_data = convert_np_to_bf16(np.array(tensor.float_data))
+        # int_list = _npfloat16_to_int(float16_data)
+        # tensor.int32_data[:] = int_list
+        tensor.float_data[:] = bf16_data
+        # if bf16_data.size > 1000:
+        #     print(bf16_data.shape)
+    # convert raw_data (bytes type)
+    if tensor.raw_data:
+        # convert n.raw_data to float
+        float32_list = np.frombuffer(tensor.raw_data, dtype='float32')
+        # convert float to float16
+        # if float32_list.size > 1000:
+        #     print(float32_list.shape)
+        float16_list = convert_np_to_bf16(float32_list)
+        # convert float16 to bytes and write back to raw_data
+        tensor.raw_data = float16_list.tobytes()
+
+    # data = np.array(tensor)
+    return tensor
+
+def convert_fp32_to_bf16(model):
+    queue = deque()
+    queue.append(model)
+    while queue:
+        q = queue.popleft()
+        if isinstance(q, onnx_proto.ModelProto):
+            queue.append(q.graph)
+        # if q is model.graph, push q.node.attribute (AttributeProto)
+        if isinstance(q, onnx_proto.GraphProto):
+            for n in q.node:
+                for attr in n.attribute:
+                    queue.append(attr)
+        # if q is model.graph.node.attribute, push q.g and q.graphs (GraphProto)
+        # and process node.attribute.t and node.attribute.tensors (TensorProto)
+        if isinstance(q, onnx_proto.AttributeProto):
+            queue.append(q.g)
+            for n in q.graphs:
+                queue.append(n) 
+            if q.t.data_type == onnx_proto.TensorProto.FLOAT:
+                q.t.CopyFrom(mask_tensor_values(q.t))
+            for n in q.tensors:
+                if n.data_type == onnx_proto.TensorProto.FLOAT:
+                    n = mask_tensor_values(n)
+        # if q is graph, process graph.initializer(TensorProto), input, output and value_info (ValueInfoProto)
+        if isinstance(q, onnx_proto.GraphProto):
+            for n in q.initializer:  # TensorProto type
+                if n.data_type == onnx_proto.TensorProto.FLOAT:
+                    n = mask_tensor_values(n)
+
+
+    return model
 
 
 if __name__ == "__main__":
