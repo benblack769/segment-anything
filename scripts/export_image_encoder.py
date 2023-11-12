@@ -130,9 +130,10 @@ def run_export(
         warnings.filterwarnings("ignore", category=torch.jit.TracerWarning)
         warnings.filterwarnings("ignore", category=UserWarning)
         print(f"Exporting onnx model to {output}...")
-        if model_type == "vit_h":
+        if False and model_type == "vit_h":
             output_dir, output_file = os.path.split(output)
-            os.makedirs(output_dir, mode=0o777, exist_ok=True)
+            if output_dir:
+                os.makedirs(output_dir, mode=0o777, exist_ok=True)
             torch.onnx.export(
                 onnx_model,
                 tuple(dummy_input.values()),

@@ -77,7 +77,7 @@ class SamOnnxModel(nn.Module):
         masks = F.interpolate(
             masks,
             size=(self.img_size, self.img_size),
-            mode="bilinear",
+            mode="bicubic",
             align_corners=False,
         )
 
@@ -86,7 +86,7 @@ class SamOnnxModel(nn.Module):
 
         orig_im_size = orig_im_size.to(torch.int64)
         h, w = orig_im_size[0], orig_im_size[1]
-        masks = F.interpolate(masks, size=(h, w), mode="bilinear", align_corners=False)
+        masks = F.interpolate(masks, size=(h, w), mode="bicubic", align_corners=False)
         return masks
 
     def select_masks(

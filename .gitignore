@@ -18,6 +18,7 @@ wheels/
 *.npy
 *.ts
 model_ts*.txt
+*.onnx.gz
 
 # onnx models
 *.onnx

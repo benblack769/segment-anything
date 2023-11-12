@@ -15,8 +15,9 @@ crop = np.expand_dims(crop, 0)
 
 sess = onnxruntime.InferenceSession("vit_b_lm_encoder.onnx.bf16.onnx")
 
-embeddings, = sess.run(None, {"input_image": crop})
-print(embeddings.shape)
+for i in range(10):
+    embeddings, = sess.run(None, {"input_image": crop})
+    print(embeddings.shape)
 np.save("embeddings.npy",embeddings)
 embeddings = np.load("embeddings.npy")
 # exit(0)
@@ -39,6 +40,7 @@ input_data = {
     "orig_im_size": np.array([1024, 1024], dtype=np.float32),
 }
 # input_data = {key: value.numpy() for key, value in input_data.items()}
+# for i in range(10):
 outs = sess.run(None, input_data)
 print(len(outs))
 print([out.shape for out in outs])
