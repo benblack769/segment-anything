@@ -93,8 +93,6 @@ To export feature encoder
 ```
 python scripts/export_image_encoder.py --checkpoint <path/to/checkpoint> --model-type <model_type> --output <path/to/output>
 python scripts/export_image_encoder.py --checkpoint vit_b_lm.pth --model-type vit_b --output vit_b_lm_encoder.onnx 
-python scripts/export_image_encoder.py --checkpoint vit_h_lm.pth --model-type vit_h --output vit_h_lm_encoder.onnx 
-python scripts/export_image_encoder.py --checkpoint vit_h_em.pth --model-type vit_h --output vit_h_em_encoder.onnx 
 python scripts/export_image_encoder.py --checkpoint vit_b_em.pth --model-type vit_b --output vit_b_em_encoder.onnx 
 python scripts/export_image_encoder.py --checkpoint sam_vit_b_01ec64.pth --model-type vit_b --output vit_b_encoder.onnx 
 ```

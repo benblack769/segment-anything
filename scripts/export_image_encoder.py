@@ -161,9 +161,6 @@ def run_export(
                     dynamic_axes=dynamic_axes,
                 )
 
-    onnx_model_bf16 = convert_fp32_to_bf16(onnx.load(output))
-    onnx.save(onnx_model_bf16, f"{output}.bf16.onnx")
-
     if onnxruntime_exists:
         ort_inputs = {k: to_numpy(v) for k, v in dummy_input.items()}
         providers = ["CPUExecutionProvider"]
@@ -179,10 +176,20 @@ def run_export(
                     weights = onnxruntime.OrtValue.ortvalue_from_numpy(weights)
                     session_option.add_initializer(layer, weights)
         else:
-            ort_session = onnxruntime.InferenceSession(output, providers=providers)
+            
+            sess_options = onnxruntime.SessionOptions()
+            # Set graph optimization level
+            sess_options.graph_optimization_level = onnxruntime.GraphOptimizationLevel.ORT_ENABLE_EXTENDED
+            sess_options.optimized_model_filepath = "optimized_model.onnx"
+
+            ort_session = onnxruntime.InferenceSession(output, sess_options, providers=providers)
 
         _ = ort_session.run(None, ort_inputs)
         print("Model has successfully been run with ONNXRuntime.")
+
+        onnx_model_bf16 = convert_fp32_to_bf16(onnx.load("optimized_model.onnx"))
+        onnx.save(onnx_model_bf16, f"{output}.bf16.onnx")
+        print("FP32 to bf16 conversion successful.")
 
 
 def to_numpy(tensor):
